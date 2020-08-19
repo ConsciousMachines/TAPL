@@ -229,7 +229,8 @@ namespace arith
                 term.test(five, q8.eval());
                 Console.WriteLine(q8);
             }
-            Console.WriteLine(five.eval()); // not defined in semantics lol
+            
+            Console.WriteLine(term.newSucc(term.newTrue()).eval()); // wrong things come out in normal form
 
             Console.ReadKey();
         }
