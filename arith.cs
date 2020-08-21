@@ -64,10 +64,7 @@ namespace arith
         public term eval()
         {
             term t = this.eval1();
-            if (t.tag == Tag.Error && t.m == "NoRuleApplies")
-            {
-                return this;
-            }
+            if (t.tag == Tag.Error && t.m == "NoRuleApplies") return this; // early termination, for normal forms
             else return t.eval();
         }
         public term eval1() // recursive calls <congruences> must be checked to propagate error
@@ -122,13 +119,8 @@ namespace arith
         //   I N T E R N A L 
         public int succ_to_int()
         {
-            term e = this.copy();
             int counter = 0;
-            while (e.tag == Tag.Succ)
-            {
-                counter++;
-                e = e.t;
-            }
+            for (term e = this; e.tag == Tag.Succ; e = e.t) counter++;
             return counter;
         }
         public term copy()
@@ -150,13 +142,13 @@ namespace arith
         {
             switch (this.tag)
             {
+                case Tag.Zero: return "zero";
                 case Tag.True: return "true";
                 case Tag.False: return "false";
-                case Tag.If: return $"If ({t}) then ({if2}) else ({if3})";
-                case Tag.Zero: return "zero";
                 case Tag.Succ: return $"Succ({t})"; //return this.succ_to_int().ToString();
                 case Tag.Pred: return $"Pred({t})";
                 case Tag.IsZero: return $"IsZero({t})";
+                case Tag.If: return $"If ({t}) then ({if2}) else ({if3})";
                 case Tag.Error: return this.m;
                 default: return "<< E R R O R >>";
             }
@@ -173,7 +165,7 @@ namespace arith
                 case Tag.IsZero: return t2.tag == Tag.IsZero ? t1.t == t2.t : false;
                 case Tag.If: return t2.tag == Tag.If ? ((t1.t == t2.t) && (t1.if2 == t2.if2) && (t1.if3 == t2.if3)) : false;
                 case Tag.Error: return t2.tag == Tag.Error ? t1.m == t2.m : false;
-                default: return false; //  throw new Exception("Error in operator=="); // unreachable?
+                default: return false; // unreachable?
             }
         }
         public static bool operator !=(term t1, term t2) => !(t1 == t2);
@@ -231,6 +223,7 @@ namespace arith
             }
             
             Console.WriteLine(term.newSucc(term.newTrue()).eval()); // wrong things come out in normal form
+            Console.WriteLine(five.succ_to_int());
 
             Console.ReadKey();
         }
