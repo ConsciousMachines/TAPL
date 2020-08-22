@@ -169,7 +169,7 @@ namespace simplebool_cs
                     if (t.deBr_ind == j + cutoff) return shift(cutoff, s); // this is where we shift all at once, hence cutoff going in as d
                     else return term.newVar(t.deBr_ind, t.DBG_CTX_LEN);
                 case Tag.Abs:
-                    return term.newAbs(t.lexeme, t.type, subst(j, s, t.right, cutoff + 1)); // TODO: probably passing in wrong args
+                    return term.newAbs(t.lexeme, t.type, subst(j, s, t.right, cutoff + 1)); 
                 case Tag.App:
                     return term.newApp(subst(j, s, t.left, cutoff), subst(j, s, t.right, cutoff));
                 case Tag.If: 
@@ -185,7 +185,7 @@ namespace simplebool_cs
         {
             switch (this.tag)
             {
-                case Tag.Var: return this.deBr_ind;//$"Variable-term: prev_name:{lexeme}, index:{deBr_ind}, ctx:{DBG_CTX_LEN}";
+                case Tag.Var: return this.deBr_ind.ToString();//$"Variable-term: prev_name:{lexeme}, index:{deBr_ind}, ctx:{DBG_CTX_LEN}";
                 case Tag.Abs: return $"\\ {lexeme}:{type}. {right}";
                 case Tag.App: return $"({left} {right})";
                 case Tag.True: return "true";
@@ -338,7 +338,7 @@ namespace simplebool_cs
             Context ctx = new Context();
             foreach (var pair in this.entries)
             {
-                var new_pair = (pair.Item1, pair.Item2.copy()); // TODO: do we really need to copy the binding?
+                var new_pair = (pair.Item1, pair.Item2); // possibly copy binding here if types change... but they dont!
                 ctx.entries.Add(new_pair);
             }
             return ctx;
