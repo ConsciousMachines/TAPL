@@ -260,7 +260,7 @@ namespace rcdsubbot_cs
         public static term termShiftAbove(int d, int c, term t) => term_map((c, x, n) => x >= c ? term.newVar(x + d, n + d) : term.newVar(x, n + d), c, t);
         public static term termShift(int d, term t) => termShiftAbove(d, 0, t);
         public static term termSubst(int j, term s, term t) => term_map((j, x, n) => x == j ? termShift(j, s) : term.newVar(x, n), j, t);
-        public static term termSubstTop(term s, term t) => termShift(-1, termSubst(0, termShift(1, s), t));
+        public static term beta_reduce(term s, term t) => termShift(-1, termSubst(0, termShift(1, s), t));
         //   P U B L I C 
         public term findRecordElement(string m)
         {
@@ -273,7 +273,7 @@ namespace rcdsubbot_cs
             {
                 case Tag.App:
                     // case 1: left is ABS, right is value 
-                    if (this.left.tag == Tag.Abs && right.isval()) return termSubstTop(this.right, this.left.right);
+                    if (this.left.tag == Tag.Abs && right.isval()) return beta_reduce(this.right, this.left.right);
                     // case 2: left is value, take a step for right
                     if (this.left.isval())
                     {
@@ -283,7 +283,7 @@ namespace rcdsubbot_cs
                         return term.newApp(left, right_step);
                     }
                     // case 3: take step for left side, which is not a value!
-                    var left_step = right.eval1(ctx);
+                    var left_step = left.eval1(ctx);
                     if (left_step.tag == Tag.Error && left_step.lexeme == "NoRuleApplies") return left_step;
                     return term.newApp(left_step, right);
                 case Tag.Record:
@@ -507,21 +507,25 @@ namespace rcdsubbot_cs
                 test(t);
             }
             {
-                // test 5 - Church encoding - under construction 
+                // test 5 - Church encoding  
+                term soy;
                 //  λx:T. λy:T. x
-                var tru = λ("x", T2T, λ("y", T2T, V(1)));
-                var fls = λ("x", T2T, λ("y", T2T, V(0)));
-                var fst = λ("p", T2T, App(V(0), tru));
-                var snd = λ("p", T2T, App(V(0), fls));
+                var tru = λ("x", T, λ("y", T, V(1)));
+                var fls = λ("x", T, λ("y", T, V(0)));
+                var fst = λ("p", T, App(V(0), tru));
+                var snd = λ("p", T, App(V(0), fls));
+                var pair = λ("f", T, λ("s", T, λ("b", T, App(App(V(0), V(2)), V(1)))));
 
-                var pair = λ("f", T2T, λ("s", T2T, λ("b", T2T, App(App(V(0), V(2)), V(1)))));
+                //   ( Bot, Top ) -> taking fst should yield Bot.
+                var pair_b_t = App(App(pair, b2b), t2t);
+                soy = App(fst, pair_b_t);
+                test(soy);
 
-                /*
-                var soy = App(fst, App(App(pair, t2t), b2b));
-                test(soy); // should be T->T
-                soy = App(snd, App(App(pair, t2t), b2b));
-                test(soy); // should be B->B
-                */
+                // alright! got Church encoding to work. our only values in this language are t2t and b2b, 
+                // and also records which are combinations of them. 
+                // of course the type checker doesn't agree with this random copy-pasting. a function that 
+                // takes a T and returns a B would be a subtype of every function. But we can't instantiate B
+                // nor specify explicitly a function's return type so we can't fake untyped-ness here. 
             }
 
             Console.ReadKey();
