@@ -62,7 +62,7 @@ namespace rcdsubbot_cs
             {
                 case Tag.Top: return t2.tag == Tag.Top;
                 case Tag.Bot: return t2.tag == Tag.Bot;
-                case Tag.Error: throw new Exception("ocmparing error types, wtf bruv");
+                case Tag.Error: throw new Exception("comparing error types, wtf bruv");
                 case Tag.Record:
                     if (t1.entries.Count != t2.entries.Count) return false;
                     for (int i = 0; i < t1.entries.Count; i++)
@@ -90,6 +90,8 @@ namespace rcdsubbot_cs
                         sb.Append(ele.Item1);
                         sb.Append(":");
                         sb.Append(ele.Item2);
+                        sb.Append(", ");
+
                     }
                     sb.Append("]");
                     return sb.ToString();
@@ -295,7 +297,7 @@ namespace rcdsubbot_cs
                         if (term_step.tag == Tag.Error && term_step.lexeme == "NoRuleApplies") return term_step;
                         entries[i] = (entries[i].Item1, term_step); // a bit of bullshit since item2 is not an l-val
                     }
-                    return this;
+                    return term.newError("NoRuleApplies"); // after we eval the whole record, raise error so outer call returns this
                 case Tag.Proj:
                     // case 1: left side is a record value
                     if (this.left.tag == Tag.Record && this.left.isval())
@@ -381,20 +383,145 @@ namespace rcdsubbot_cs
     {
         static void Main(string[] args)
         {
-            var ctx = new Context();
+            var Γ = new Context();
+
+            void test(term t)
+            {
+                var tyT = ty.type_of(Γ, t);
+                var te = t.eval(Γ);
+                Console.WriteLine($"{te}\t:\t{tyT}");
+            }
+
+            term λ(string name, ty type, term body) => term.newAbs(name, type, body);
+            term V(int deBruin) => term.newVar(deBruin, -9999); // DBG not used today
+            term App(term left, term right) => term.newApp(left, right);
+            term Proj(term left, string method) => term.newProj(left, method);
+            var T = ty.newTop();
+            var B = ty.newBot();
+            var T2T = ty.newArr(T, T);
+            var B2B = ty.newArr(T, T);
+
+            //  λx:T. x
+            var t2t = λ("x", T, V(0));
+            //  λx:B. x
+            var b2b = λ("x", B, V(0));
+
+            
 
             {
                 // test 1
-                var top2top = term.newAbs("x", ty.newTop(), term.newVar(0, 1));
-                var bot2bot = term.newAbs("x", ty.newBot(), term.newVar(0, 1));
-                var arg = term.newRecord(new List<(string, term)>() { ("x", top2top), ("y", bot2bot) }); // TODO: make this a super type with additional fields, like y:
-                var fn = term.newAbs("r",
-                    ty.newRecord(new List<(string, ty)>() { ("x", ty.newArr(ty.newTop(), ty.newTop())) }), // type
-                    term.newApp(term.newProj(term.newVar(0, 1), "x"), term.newProj(term.newVar(0, 1), "x"))); // body 
-                var t = term.newApp(fn, arg);
-                var tyT = ty.type_of(ctx, t);
-                var te = t.eval(ctx);
-                Console.WriteLine($"{te}\t:\t{tyT}");
+                //    { x = (λx:T. x), y = (λx:B. x)}
+                var arg = term.newRecord(new List<(string, term)>() { ("x", t2t), ("y", b2b) });
+                //    λ r:{x:T->T}. r.x r.x 
+                var rec_T2T = ty.newRecord(new List<(string, ty)>() { ("x", ty.newArr(T, T)) }); // type
+                var body = App(Proj(V(0), "x"), Proj(V(0), "x")); // body 
+                var fn = λ("r", rec_T2T, body);
+                //    (λ r:{x:T->T}. r.x r.x)   { x = (λx:T. x), y = (λx:B. x)}       <Application>
+                var t = App(fn, arg);
+                test(t);
+            }
+            {
+                // test 2 
+                // r2 <: r1 by Width
+                var r1 = term.newRecord(new List<(string, term)>() { ("Bob", t2t) });
+                var r2 = term.newRecord(new List<(string, term)>() { ("Bob", t2t), ("Karl", b2b) });
+                Console.WriteLine(ty.subtype(ty.type_of(Γ, r2), ty.type_of(Γ, r1)));
+
+                // s2 <: s1 by Depth 
+                var s1 = term.newRecord(new List<(string, term)>() { ("Yui", r1) });
+                var s2 = term.newRecord(new List<(string, term)>() { ("Yui", r2) });
+                Console.WriteLine(ty.subtype(ty.type_of(Γ, s2), ty.type_of(Γ, s1)));
+
+                // s2 <: s1 by Width & Depth 
+                var t1 = term.newRecord(new List<(string, term)>() { ("Yui", r1) });
+                var t2 = term.newRecord(new List<(string, term)>() { ("Yui", r2), ("Hachiman", r2) });
+                Console.WriteLine(ty.subtype(ty.type_of(Γ, t2), ty.type_of(Γ, t1)));
+            }
+            {
+                // test 3: 
+                /*  λ x:{one : T, two : T, three : T}. {x.one, x.three }
+                 *  λ has type S1 -> S2, {T,T,T}->{T,T}
+                 *  we want to check if λ is a subtype of {T,T,T,T}->{T}.
+                 *  can also check {T,B,T,B}->{T} is a subtype of λ.
+                 *           T2                         {T}
+                 *           |                           | 
+                 *     S1 -> S2             {T,T,T} -> {T, T}
+                 *      |                      | 
+                 *     T1                  {T,B,T,B}
+                 */
+                var T2 = ty.newRecord(new List<(string, ty)>() { ("Yui", T) });
+                var S2 = ty.newRecord(new List<(string, ty)>() { ("Yui", T), ("Hachiman", T) });
+                var S1 = ty.newRecord(new List<(string, ty)>() { ("Yui", T), ("Hachiman", T), ("Yukinon", T) });
+                var T1 = ty.newRecord(new List<(string, ty)>() { ("Yui", T), ("Hachiman", T), ("Yukinon", T), ("Saki", T) });
+                var S1_S2 = ty.newArr(S1, S2);
+                var T1_T2 = ty.newArr(T1, T2);
+                Console.WriteLine(ty.subtype(T1, S1));
+                Console.WriteLine(ty.subtype(S2, T2));
+                Console.WriteLine(ty.subtype(S1_S2, T1_T2));
+                
+
+                //     λ x:{T,T,T}. {Yui = x.Yui, Hachiman = x.Hachiman} 
+                var fn1 = λ("x", S1, term.newRecord(new List<(string, term)>() { ("Yui", Proj(V(0),"Yui")), ("Hachiman", Proj(V(0), "Hachiman")) }));
+                //     λ x:{T,B,T,B}. {Yui = x.Yui}
+                var fn2 = λ("x", T1, term.newRecord(new List<(string, term)>() { ("Yui", Proj(V(0),"Yui")) }));
+                
+                // show that S1->S2 <: T1->T2
+                var fn1t = ty.type_of(Γ, fn1);
+                var fn2t = ty.type_of(Γ, fn2);
+                Console.WriteLine(ty.subtype(fn1t, fn2t));
+
+
+                // apply the functions to args
+                var t2 = term.newRecord(new List<(string, term)>() { ("Yui", t2t) });
+                var s2 = term.newRecord(new List<(string, term)>() { ("Yui", t2t), ("Hachiman", t2t) });
+                var s1 = term.newRecord(new List<(string, term)>() { ("Yui", t2t), ("Hachiman", t2t), ("Yukinon", t2t) });
+                var t1 = term.newRecord(new List<(string, term)>() { ("Yui", t2t), ("Hachiman", b2b), ("Yukinon", t2t), ("Saki", b2b) });
+
+                var app_fn1 = App(fn1, s1);
+                var fn1_res_ty = ty.type_of(Γ, app_fn1); // should be S2
+                Console.WriteLine(fn1_res_ty);
+                Console.WriteLine(S2);
+                Console.WriteLine(fn1_res_ty == S2);
+
+                var app_fn2 = App(fn2, t1);
+                var fn2_res_ty = ty.type_of(Γ, app_fn2); // should be T2
+                Console.WriteLine(fn2_res_ty);
+                Console.WriteLine(T2);
+                Console.WriteLine(fn2_res_ty == T2);
+
+                // the record field has type T, but nothing can be of type T, so we pass in T->T,
+                // which works out since lambdas are values under call-by-value rules (no beta-subs inside lambdas)
+                // for B, nothing can be B, and we cant even pass in B->B since B is a subtype of that. so any field of type B can't take anything!
+
+                test(app_fn1);
+                test(app_fn2);
+            }
+            {
+                // test 4
+                var r = term.newRecord(new List<(string, term)>() { ("Yui", t2t) });
+                var rt = ty.newRecord(new List<(string, ty)>() { ("Yui", T) }); // ty.newArr(T, T) works too
+                // \r:{Yui:T->T}. r.Yui    - SHOULD WORKD WITH Yui:T as well!!
+                var fn = λ("r", rt, Proj(V(0), "Yui"));
+
+                var t = App(fn, r);
+                test(t);
+            }
+            {
+                // test 5 - Church encoding - under construction 
+                //  λx:T. λy:T. x
+                var tru = λ("x", T2T, λ("y", T2T, V(1)));
+                var fls = λ("x", T2T, λ("y", T2T, V(0)));
+                var fst = λ("p", T2T, App(V(0), tru));
+                var snd = λ("p", T2T, App(V(0), fls));
+
+                var pair = λ("f", T2T, λ("s", T2T, λ("b", T2T, App(App(V(0), V(2)), V(1)))));
+
+                /*
+                var soy = App(fst, App(App(pair, t2t), b2b));
+                test(soy); // should be T->T
+                soy = App(snd, App(App(pair, t2t), b2b));
+                test(soy); // should be B->B
+                */
             }
 
             Console.ReadKey();
