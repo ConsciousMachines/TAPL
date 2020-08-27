@@ -42,13 +42,13 @@ namespace rcdsubbot_cs
         // Error 
         string lexeme;
         //   C O N S T R U C T O R 
-        private ty (Tag tag, ty ty1, ty ty2, List<(string, ty)> entries, string m)
+        private ty (Tag tag, ty left, ty right, List<(string, ty)> entries, string lexeme)
         {
             this.tag = tag;
-            this.left = ty1;
-            this.right = ty2;
+            this.left = left;
+            this.right = right;
             this.entries = entries;
-            this.lexeme = m;
+            this.lexeme = lexeme;
         }
         public static ty newTop() => new ty(Tag.Top, null, null, null, null);
         public static ty newBot() => new ty(Tag.Bot, null, null, null, null);
@@ -201,12 +201,12 @@ namespace rcdsubbot_cs
             else return false;
         }
         //   C O N S T R U C T O R S
-        private term(Tag tag, int deBruin, int DBG_CTX_LEN, string m, ty type, term left, term right ,List<(string, term)> entries)
+        private term(Tag tag, int deBruin, int DBG_CTX_LEN, string lexeme, ty type, term left, term right ,List<(string, term)> entries)
         {
             this.tag = tag;
             this.deBruin = deBruin;
             this.DBG_CTX_LEN = DBG_CTX_LEN;
-            this.lexeme = m;
+            this.lexeme = lexeme;
             this.type = type;
             this.left = left;
             this.right = right;
@@ -413,7 +413,7 @@ namespace rcdsubbot_cs
                 //    { x = (λx:T. x), y = (λx:B. x)}
                 var arg = term.newRecord(new List<(string, term)>() { ("x", t2t), ("y", b2b) });
                 //    λ r:{x:T->T}. r.x r.x 
-                var rec_T2T = ty.newRecord(new List<(string, ty)>() { ("x", ty.newArr(T, T)) }); // type
+                var rec_T2T = ty.newRecord(new List<(string, ty)>() { ("x", T2T) }); // type
                 var body = App(Proj(V(0), "x"), Proj(V(0), "x")); // body 
                 var fn = λ("r", rec_T2T, body);
                 //    (λ r:{x:T->T}. r.x r.x)   { x = (λx:T. x), y = (λx:B. x)}       <Application>
@@ -423,8 +423,8 @@ namespace rcdsubbot_cs
             {
                 // test 2 
                 // r2 <: r1 by Width
-                var r1 = term.newRecord(new List<(string, term)>() { ("Bob", t2t) });
-                var r2 = term.newRecord(new List<(string, term)>() { ("Bob", t2t), ("Karl", b2b) });
+                var r1 = term.newRecord(new List<(string, term)>() { ("Yui", t2t) });
+                var r2 = term.newRecord(new List<(string, term)>() { ("Yui", t2t), ("Hacihman", b2b) });
                 Console.WriteLine(ty.subtype(ty.type_of(Γ, r2), ty.type_of(Γ, r1)));
 
                 // s2 <: s1 by Depth 
