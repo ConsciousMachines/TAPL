@@ -246,17 +246,17 @@ namespace fullfomsub_cs
         // data 
         public enum Tag { True, False, Unit, Zero, Fix, Succ, Pred, IsZero, String, Float, Inert, Ascribe, TimesFloat, Var, Abs, App, If, Record, Proj, Let, TAbs, TApp, Pack, Unpack }
         public readonly Tag tag;
-        float f;
-        ty type;
-        ty type2;
-        term left;
-        term guard;
-        term right;
-        int deBruin;
-        string lexeme1;
-        string lexeme2;
-        int DBG_CTX_LEN;
-        List<(string, term)> entries;
+        private readonly float f;
+        private readonly ty type;
+        private readonly ty type2;
+        private readonly term left;
+        private readonly term guard;
+        private readonly term right;
+        private readonly int deBruin;
+        private readonly string lexeme1;
+        private readonly string lexeme2;
+        private readonly int DBG_CTX_LEN;
+        private readonly List<(string, term)> entries;
         private term(Tag tag, int deBruin, int DBG_CTX_LEN, ty type, ty type2, float f, string lexeme1, string lexeme2, term guard, term left, term right, List<(string, term)> entries)
         {
             this.f = f;
